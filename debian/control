@@ -1,0 +1,14 @@
+Source: apache2-mod-log-ipmask
+Maintainer: Sebastian Marsching <apache2-mod-log-ipmask-maintainer@oss.aquenos.com>
+Section: web
+Priority: extra
+Standards-Version: 3.9.7
+Build-Depends: apache2-dev (>= 2.4), debhelper (>= 9), dh-apache2
+
+Package: libapache2-mod-log-ipmask
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Apache module for masking parts of client IP addresses in log
+ files. This can be used to hide a configurable number of lower bits when
+ writing to the log file in order to comply with privacy regulations. This
+ module can deal with both IPv4 and IPv6 addresses.

@@ -1,0 +1,8 @@
+.vscode
+*.slo
+debian/debhelper-build-stamp
+debian/files
+debian/libapache2-mod-log-ipmask
+debian/*.debhelper.log
+debian/*.debhelper
+debian/*.substvars

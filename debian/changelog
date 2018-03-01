@@ -1,0 +1,5 @@
+apache2-mod-log-ipmask (1.0.0) stable; urgency=low
+
+  * Initial release.
+
+ -- Sebastian Marsching <apache2-mod-log-ipmask-maintainer@oss.aquenos.com>  Thu, 01 Mar 2018 16:20:18 +0100
