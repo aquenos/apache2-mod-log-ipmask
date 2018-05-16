@@ -736,7 +736,7 @@ static char const *set_default_ipv6_mask(cmd_parms *cmd, void *dummy,
   // We first validate the string. std::stoi would only report an error if it
   // cannot convert the string, not if it contained extra characters.
   for (auto p = arg; *p; p++) {
-    if (!isdigit(*p)) return "Argument to LogDefaultIPv6Mask must be a number between zero and 32.";
+    if (!isdigit(*p)) return "Argument to LogDefaultIPv6Mask must be a number between zero and 128.";
   }
   int mask_bits = std::atoi(arg);
   if (mask_bits > 128) {
