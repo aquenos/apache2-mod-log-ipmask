@@ -563,6 +563,46 @@ private:
 using IPv4_Address = IP_Address<4, IPv4_Address_Parser, IPv4_Address_Printer>;
 using IPv6_Address = IP_Address<16, IPv6_Address_Parser, IPv6_Address_Printer>;
 
+struct log_ipmask_config {
+  Optional<int> masked_bits_ipv4;
+  Optional<int> masked_bits_ipv6;
+};
+
+Optional<std::string> mask_ip_address(char const *address_cstr,
+    log_ipmask_config *config, Format_Options format_options) {
+  // If no mask has been defined, we use the full address by default. This means
+  // that only loading this module will not have any effect, without also using
+  // the respective configuration directives or specifying the special format.
+  int masked_bits_ipv4, masked_bits_ipv6;
+  if (config) {
+    masked_bits_ipv4 = format_options.masked_bits_ipv4.value_or(
+        config->masked_bits_ipv4.value_or(32));
+    masked_bits_ipv6 = format_options.masked_bits_ipv6.value_or(
+        config->masked_bits_ipv6.value_or(128));
+  } else {
+    masked_bits_ipv4 = 32;
+    masked_bits_ipv6 = 128;
+  }
+  std::string address_str(address_cstr);
+  std::string masked_address_str;
+  try {
+    IPv4_Address address(address_str);
+    address.mask(masked_bits_ipv4);
+    masked_address_str = address.str();
+  } catch (...) {
+    // If the address is not an IPv4 address, it might still be an IPv6 address.
+    try {
+      IPv6_Address address(address_str);
+      address.mask(masked_bits_ipv6);
+      masked_address_str = address.str();
+    } catch (...) {
+      // If the address is not an IPv6 address either, we cannot mask it.
+      return Optional<std::string>();
+    }
+  }
+  return Optional<std::string>(masked_address_str);
+}
+
 } // anonymous namespace
 
 extern "C" {
@@ -577,46 +617,69 @@ extern "C" {
 #include "mod_log_config.h"
 
 
-struct log_ipmask_config {
-  Optional<int> masked_bits_ipv4;
-  Optional<int> masked_bits_ipv6;
-};
-
 // We only declare the get-config function here because its implementation
 // depends on the module declaration.
 static log_ipmask_config *get_log_ipmask_config(ap_conf_vector_t *configs);
 
-char const* mask_ip_address(char const *address_cstr, log_ipmask_config *config,
-    Format_Options format_options, apr_pool_t *pool) {
-  // If no mask has been defined, we use the full address by default. This means
-  // that only loading this module will not have any effect, without also using
-  // the respective configuration directives or specifying the special format.
-  int masked_bits_ipv4 = format_options.masked_bits_ipv4.value_or(
-      config->masked_bits_ipv4.value_or(32));
-  int masked_bits_ipv6 = format_options.masked_bits_ipv6.value_or(
-      config->masked_bits_ipv6.value_or(128));
-  std::string address_str(address_cstr);
-  std::string masked_address_str;
-  try {
-    IPv4_Address address(address_str);
-    address.mask(masked_bits_ipv4);
-    masked_address_str = address.str();
-  } catch (...) {
-    // If the address is not an IPv4 address, it might still be an IPv6 address.
-    try {
-      IPv6_Address address(address_str);
-      address.mask(masked_bits_ipv6);
-      masked_address_str = address.str();
-    } catch (...) {
-      // If the address is not an IPv6 address either, we cannot mask it and
-      // return the string as-is.
-      return address_cstr;
-    }
+static char const* mask_ip_address_cstr(char const *address_cstr,
+    log_ipmask_config *config, Format_Options format_options,
+    apr_pool_t *pool) {
+  auto masked_ip_address = mask_ip_address(address_cstr, config,
+      format_options);
+  if (masked_ip_address) {
+    // We have to allocate the space for the string from the pool, because the
+    // pointer returned by c_str() becomes invalid as soon as the string object
+    // is destructed (which happens when we return from this function).
+    return apr_pstrdup(pool, masked_ip_address->c_str());
+  } else {
+    // We could not mask the IP address (most likely because it is a hostname
+    // and not an IP address), so we return the unmasked original string.
+    return address_cstr;
   }
-  // The C string returned by the C++ string is only valid as long as the string
-  // object exists, so we have to duplicate it using the memory pool before
-  // returning it.
-  return apr_pstrdup(pool, masked_address_str.c_str());
+}
+
+static int mask_ip_address_printf(char *buf, int buflen,
+    char const *address_cstr, int port, log_ipmask_config *config,
+    Format_Options format_options) {
+  auto masked_ip_address = mask_ip_address(address_cstr, config,
+      format_options);
+  if (masked_ip_address) {
+    return apr_snprintf(buf, buflen, "%s:%d", masked_ip_address->c_str(), port);
+  } else {
+    // We could not mask the IP address (most likely because it is a hostname
+    // and not an IP address), so we print the unmasked original string.
+    return apr_snprintf(buf, buflen, "%s:%d", address_cstr, port);
+  }
+}
+
+static int error_log_remote_address(const ap_errorlog_info *info,
+    const char *arg, char *buf, int buflen) {
+  log_ipmask_config *config;
+  if (info->s) {
+    config = get_log_ipmask_config(info->s->module_config);
+  } else {
+    config = nullptr;
+  }
+  Format_Options format_options;
+  try {
+    format_options = Format_Options_Parser::parse(arg, true);
+  } catch (...) {
+    // Ignore any exceptions that occur while parsing the format options and
+    // simply continue with the default options.
+  }
+  char const *orig_ip_addr_str;
+  int port;
+  if (info->r && !format_options.use_peer_ip) {
+    orig_ip_addr_str = info->r->useragent_ip;
+    port = info->r->useragent_addr ? info->r->useragent_addr->port : 0;
+  } else if (info->c) {
+    orig_ip_addr_str = info->c->client_ip;
+    port = info->c->client_addr ? info->c->client_addr->port : 0;
+  } else {
+    return 0;
+  }
+  return mask_ip_address_printf(buf, buflen, orig_ip_addr_str, port, config,
+      format_options);
 }
 
 static char const *log_remote_address(request_rec *request,
@@ -636,7 +699,7 @@ static char const *log_remote_address(request_rec *request,
   } else {
     orig_ip_addr_str = request->useragent_ip;
   }
-  return mask_ip_address(orig_ip_addr_str, config, format_options,
+  return mask_ip_address_cstr(orig_ip_addr_str, config, format_options,
       request->pool);
 }
 
@@ -652,8 +715,9 @@ static char const *log_remote_host(request_rec *request, char *option_str) {
   }
   char const *orig_ip_addr_str = ap_get_remote_host(request->connection,
       request->per_dir_config, REMOTE_NAME, NULL);
-  char const *masked_ip_addr_str = mask_ip_address(orig_ip_addr_str, config,
-      format_options, request->pool);
+  char const *masked_ip_addr_str = mask_ip_address_cstr(orig_ip_addr_str,
+      config, format_options, request->pool);
+
   // If the remote host is a name instead of an address, we could not mask it
   // and we have to escape it because it may contain characters that need to be
   // escaped.
@@ -692,6 +756,11 @@ static void *merge_log_ipmask_config(apr_pool_t *pool, void *base_void,
 // module.
 static int log_ipmask_pre_config(apr_pool_t *config_pool, apr_pool_t *log_pool,
     apr_pool_t *temp_pool) {
+  // We create char arrays instead of passing a string constant. The
+  // ap_register_log_handler expects a char * instead of a char const *, so
+  // passing a string constant results in a compiler warning.
+  char tag_remote_address[] = {'a', 0};
+  char tag_remote_host[] = {'h', 0};
   // The parameters to the ap_register_log_handler function are:
   // - Memory pool used by the function.
   // - Identifier that is used in the format string.
@@ -703,15 +772,18 @@ static int log_ipmask_pre_config(apr_pool_t *config_pool, apr_pool_t *log_pool,
   //   default (the same as specifying <).
   auto register_log_handler = APR_RETRIEVE_OPTIONAL_FN(ap_register_log_handler);
   if (register_log_handler) {
-    // We create char arrays instead of passing a string constant. The
-    // ap_register_log_handler expects a char * instead of a char const *, so
-    // passing a string constant results in a compiler warning.
-    char tag_remote_address[] = {'a', 0};
-    char tag_remote_host[] = {'h', 0};
     register_log_handler(config_pool, tag_remote_address, log_remote_address,
         0);
     register_log_handler(config_pool, tag_remote_host, log_remote_host, 0);
   }
+  // We also want to register handlers for the error log. We could do this in
+  // a separate function because this could happen immediately after the core
+  // has been initialized, but doing it here is easier because it means that
+  // we do not have to register another hook function.
+  // In the error log format, the remote host tag is not supported, so we only
+  // register the remote address tag.
+  ap_register_errorlog_handler(config_pool, tag_remote_address,
+      error_log_remote_address, 0);
   return OK;
 }
 

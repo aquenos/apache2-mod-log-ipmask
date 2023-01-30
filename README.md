@@ -86,6 +86,27 @@ Examples:
   `LogDefaultIPv4Mask` and `LogDefaultIPv6Mask`.  If the remote host name has
   been resolved, it is logged as is.
 
+### Error log
+
+If you also want to anonymize IP addresses in the error log, you have to use the
+`ErrorLogFormat` directive. If you do not use this directive, the logging
+happens through a code path that cannot be intercepted by mod_log_ipmask.
+
+The following directive should produce log output that is similar to the default
+format, but honoring the masks specified through `LogDefaultIPv4Mask` and
+`LogDefaultIPv6Mask`:
+
+```
+ErrorLogFormat "[%t] [%m:%l] [pid\ %P:tid\ %T] [client\ %a] %E: %M"
+```
+
+Like for the `LogFormat` directive, you can also specificy the mask inside the
+formatting string. For example:
+
+```
+ErrorLogFormat "[%t] [%m:%l] [pid\ %P:tid\ %T] [client\ %{8|16}a] %E: %M"
+```
+
 
 Limitations
 -----------
