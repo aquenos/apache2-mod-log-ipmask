@@ -1,5 +1,5 @@
 /**
- * Copyright 2018 aquenos GmbH.
+ * Copyright 2018-2023 aquenos GmbH.
  * All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -781,7 +781,7 @@ module AP_MODULE_DECLARE_DATA log_ipmask_module = {
 // This function depends on the module declaration, so we have to place it after
 // the declaration.
 static log_ipmask_config *get_log_ipmask_config(ap_conf_vector_t *configs) {
-  log_ipmask_config *config = reinterpret_cast<log_ipmask_config *>(
+  return reinterpret_cast<log_ipmask_config *>(
       ap_get_module_config(configs, &log_ipmask_module));
 }
 
