@@ -1,11 +1,11 @@
-apache2-mod-log-ipmask (1.1.0~rc1) stable; urgency=low
+apache2-mod-log-ipmask (1.1.0) stable; urgency=low
 
   * Add missing return statement in get_log_ipmask_config. This fixes a problem
     where the values defined through the LogDefaultIPv4Mask and
     LogDefaultIPv6Mask directives where not used.
   * Also mask IP addresses in the error log (when using the %a format).
 
- -- Sebastian Marsching <apache2-mod-log-ipmask-maintainer@oss.aquenos.com>  Mon, 30 Jan 2023 15:45:21 +0100
+ -- Sebastian Marsching <apache2-mod-log-ipmask-maintainer@oss.aquenos.com>  Wed, 01 Feb 2023 00:57:18 +0100
 
 apache2-mod-log-ipmask (1.0.0) stable; urgency=low
 
