@@ -19,7 +19,6 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
-#include <regex>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -792,8 +791,8 @@ static char const *set_default_ipv4_mask(cmd_parms *cmd, void *dummy,
   log_ipmask_config *config = get_log_ipmask_config(cmd->server->module_config);
   // We first validate the string. std::stoi would only report an error if it
   // cannot convert the string, not if it contained extra characters.
-  if (!std::regex_match(arg, std::regex("[1-3]?[0-9]"))) {
-    return "Argument to LogDefaultIPv4Mask must be a number between zero and 32.";
+  for (auto p = arg; *p; p++) {
+    if (!isdigit(*p)) return "Argument to LogDefaultIPv4Mask must be a number between zero and 32.";
   }
   int mask_bits = std::atoi(arg);
   if (mask_bits > 32) {
@@ -808,12 +807,12 @@ static char const *set_default_ipv6_mask(cmd_parms *cmd, void *dummy,
   log_ipmask_config *config = get_log_ipmask_config(cmd->server->module_config);
   // We first validate the string. std::stoi would only report an error if it
   // cannot convert the string, not if it contained extra characters.
-  if (!std::regex_match(arg, std::regex("[1]?[0-9]?[0-9]"))) {
-    return "Argument to LogDefaultIPv4Mask must be a number between zero and 128.";
+  for (auto p = arg; *p; p++) {
+    if (!isdigit(*p)) return "Argument to LogDefaultIPv6Mask must be a number between zero and 128.";
   }
   int mask_bits = std::atoi(arg);
   if (mask_bits > 128) {
-    return "Argument to LogDefaultIPv4Mask must be a number between zero and 128.";
+    return "Argument to LogDefaultIPv6Mask must be a number between zero and 128.";
   }
   config->masked_bits_ipv6 = mask_bits;
   return nullptr;
