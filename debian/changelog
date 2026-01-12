@@ -1,3 +1,9 @@
+apache2-mod-log-ipmask (1.1.1) stable; urgency=low
+
+  * Include .deps file in source package.
+
+ -- Sebastian Marsching <apache2-mod-log-ipmask-maintainer@oss.aquenos.com>  Mon, 12 Jan 2026 23:29:44 +0100
+
 apache2-mod-log-ipmask (1.1.0) stable; urgency=low
 
   * Add missing return statement in get_log_ipmask_config. This fixes a problem
