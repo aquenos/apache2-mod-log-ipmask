@@ -1,0 +1,3 @@
+# default taken from `dpkg-source --help`
+# tar-ignore="*.a *.la *.o *.so .*.sw? */*~ ,,* .[#~]* .arch-ids .arch-inventory .be .bzr .bzr.backup .bzr.tags .bzrignore .cvsignore .deps .git .gitattributes .gitignore .gitmodules .gitreview .hg .hgignore .hgsigs .hgtags .mailmap .mtn-ignore .shelf .svn CVS DEADJOE RCS _MTN _darcs {arch}"
+tar-ignore="*.a *.la *.o *.so .*.sw? */*~ ,,* .[#~]* .arch-ids .arch-inventory .be .bzr .bzr.backup .bzr.tags .bzrignore .cvsignore .git .gitattributes .gitignore .gitmodules .gitreview .hg .hgignore .hgsigs .hgtags .mailmap .mtn-ignore .shelf .svn CVS DEADJOE RCS _MTN _darcs {arch}"
